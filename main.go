@@ -29,6 +29,8 @@ func main() {
 		log.Fatalf("could not create new appender for users: %s", err.Error())
 	}
 
+	defer a.Close()
+
 	if err := a.AppendRow("Fred", int32(34)); err != nil {
 		log.Fatalf("could not append row to users: %s", err.Error())
 	}
@@ -41,22 +43,37 @@ func main() {
 		log.Fatalf("could not flush and close appender: %s", err.Error())
 	}
 
-	var (
-		name string
-		age  int
-	)
+	// var (
+	// 	name string
+	// 	age  int
+	// )
 
-	row := db.QueryRowContext(context.Background(), `SELECT name, age FROM users`)
-	if err := row.Scan(&name, &age); err != nil {
-		log.Fatalf("could not retrieve user from db: %s", err.Error())
+	// row := db.QueryRowContext(context.Background(), `SELECT name, age FROM users`)
+	// if err := row.Scan(&name, &age); err != nil {
+	// 	log.Fatalf("could not retrieve user from db: %s", err.Error())
+	// }
+
+	rows, err := db.Query(`SELECT name, age FROM users`)
+	if err != nil {
+		log.Fatalf("could not query users: %s", err.Error())
 	}
 
-	log.Printf("User: name=%s, age=%d", name, age)
+	for rows.Next() {
+		var (
+			name string
+			age  int
+		)
 
-	row = db.QueryRowContext(context.Background(), `SELECT name, age FROM users`)
-	if err := row.Scan(&name, &age); err != nil {
-		log.Fatalf("could not retrieve user from db: %s", err.Error())
+		if err := rows.Scan(&name, &age); err != nil {
+			log.Fatalf("could not scan user row: %s", err.Error())
+		}
+		log.Printf("User: name=%s, age=%d", name, age)
 	}
 
-	log.Printf("User: name=%s, age=%d", name, age)
+	if err := rows.Err(); err != nil {
+		log.Fatalf("error occurred during rows iteration: %s", err.Error())
+	}
+
+	// log.Printf("User: name=%s, age=%d", name, age)
+
 }
