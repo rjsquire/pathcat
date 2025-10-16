@@ -33,6 +33,10 @@ func main() {
 		log.Fatalf("could not append row to users: %s", err.Error())
 	}
 
+	if err := a.AppendRow("Rob", int32(22)); err != nil {
+		log.Fatalf("could not append row to users: %s", err.Error())
+	}
+
 	if err := a.Close(); err != nil {
 		log.Fatalf("could not flush and close appender: %s", err.Error())
 	}
@@ -43,6 +47,13 @@ func main() {
 	)
 
 	row := db.QueryRowContext(context.Background(), `SELECT name, age FROM users`)
+	if err := row.Scan(&name, &age); err != nil {
+		log.Fatalf("could not retrieve user from db: %s", err.Error())
+	}
+
+	log.Printf("User: name=%s, age=%d", name, age)
+
+	row = db.QueryRowContext(context.Background(), `SELECT name, age FROM users`)
 	if err := row.Scan(&name, &age); err != nil {
 		log.Fatalf("could not retrieve user from db: %s", err.Error())
 	}
