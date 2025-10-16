@@ -1,42 +1,51 @@
 package main
 
 import (
+	"context"
 	"database/sql"
-	"errors"
-	"fmt"
 	"log"
 
-	_ "github.com/duckdb/duckdb-go/v2"
+	"github.com/duckdb/duckdb-go/v2"
 )
 
 func main() {
-	db, err := sql.Open("duckdb", "")
+	c, err := duckdb.NewConnector("", nil)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("could not initialize new connector: %s", err.Error())
 	}
-	defer db.Close()
 
-	_, err = db.Exec(`CREATE TABLE people (id INTEGER, name VARCHAR)`)
+	con, err := c.Connect(context.Background())
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("could not connect: %s", err.Error())
 	}
-	_, err = db.Exec(`INSERT INTO people values (42, 'John')`)
+
+	db := sql.OpenDB(c)
+	if _, err := db.Exec(`CREATE TABLE users (name VARCHAR, age INTEGER)`); err != nil {
+		log.Fatalf("could  not create table users: %s", err.Error())
+	}
+
+	a, err := duckdb.NewAppenderFromConn(con, "", "users")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("could not create new appender for users: %s", err.Error())
+	}
+
+	if err := a.AppendRow("Fred", int32(34)); err != nil {
+		log.Fatalf("could not append row to users: %s", err.Error())
+	}
+
+	if err := a.Close(); err != nil {
+		log.Fatalf("could not flush and close appender: %s", err.Error())
 	}
 
 	var (
-		id   int
 		name string
+		age  int
 	)
-	row := db.QueryRow(`SELECT id, name FROM people`)
-	err = row.Scan(&id, &name)
-	if errors.Is(err, sql.ErrNoRows) {
-		log.Println("no rows")
-	} else if err != nil {
-		log.Fatal(err)
+
+	row := db.QueryRowContext(context.Background(), `SELECT name, age FROM users`)
+	if err := row.Scan(&name, &age); err != nil {
+		log.Fatalf("could not retrieve user from db: %s", err.Error())
 	}
 
-	fmt.Printf("id: %d, name: %s\n", id, name)
-
+	log.Printf("User: name=%s, age=%d", name, age)
 }
